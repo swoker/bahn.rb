@@ -1,0 +1,5 @@
+Load connections for public transportation from the m.bahn.de website.
+
+This a first try and under heavy development. Don't expect a working solution!
+
+See example.rb
