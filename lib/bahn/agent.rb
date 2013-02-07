@@ -22,14 +22,18 @@ module Bahn
 			:uri_adresses => 'http://reiseauskunft.bahn.de/bin/ajax-getstop.exe/en?REQ0JourneyStopsS0A=2&REQ0JourneyStopsS0G=',
 			:uri_stations => 'http://reiseauskunft.bahn.de/bin/ajax-getstop.exe/en?REQ0JourneyStopsS0A=1&REQ0JourneyStopsS0G='			
 		}
+	
+		# Set the used user agent
+		def self.user_agent=val
+			@@user_agent = val
+		end
 		
 		# Initialize a new Agent
 		# options:
 		#  :user_agent => Set the user agent. Default: "bahn.rb"
-		def initialize options = {}
-			options = {:user_agent => "bahn.rb", :logger => false}.merge(options)
+		def initialize
 			@agent = Mechanize.new
-			@agent.user_agent = options[:user_agent]
+			@agent.user_agent = @@user_agent ||= "bahn.rb"
 		end
 		
 		# Get the next few routes with public transportation from A to B.
@@ -74,7 +78,7 @@ module Bahn
 				return get_routes from, to, {:time => options[:time], :depth => options[:depth]+1}
 			end
 			
-			raise "no_route" if links.count == 0			
+			raise "no_route" if routes.count == 0 || links.count == 0			
 			routes
 		end
 		
