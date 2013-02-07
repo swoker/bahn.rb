@@ -1,0 +1,47 @@
+PATH
+  remote: .
+  specs:
+    bahn.rb (1.0.0)
+      activesupport
+      json (~> 1.6)
+      mechanize
+
+GEM
+  remote: http://rubygems.org/
+  specs:
+    activesupport (3.2.11)
+      i18n (~> 0.6)
+      multi_json (~> 1.0)
+    domain_name (0.5.7)
+      unf (~> 0.0.3)
+    i18n (0.6.1)
+    json (1.7.6)
+    mechanize (2.5.1)
+      domain_name (~> 0.5, >= 0.5.1)
+      mime-types (~> 1.17, >= 1.17.2)
+      net-http-digest_auth (~> 1.1, >= 1.1.1)
+      net-http-persistent (~> 2.5, >= 2.5.2)
+      nokogiri (~> 1.4)
+      ntlm-http (~> 0.1, >= 0.1.1)
+      webrobots (~> 0.0, >= 0.0.9)
+    mime-types (1.20.1)
+    multi_json (1.5.0)
+    net-http-digest_auth (1.2.1)
+    net-http-persistent (2.8)
+    nokogiri (1.5.6)
+    ntlm-http (0.1.1)
+    rake (10.0.3)
+    unf (0.0.5)
+      unf_ext
+    unf_ext (0.0.5)
+    webrobots (0.0.13)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  activesupport
+  bahn.rb!
+  json
+  mechanize
+  rake
