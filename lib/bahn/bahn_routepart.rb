@@ -7,12 +7,26 @@ module Bahn
 		# Return a nicely formatted route
 		# Raises errors if not everything is set properly
 		def to_s
-			"Am #{start_time.to_date} von #{start_time.hour}:#{start_time.min} bis #{end_time.to_date.to_s + ' ' if end_time.to_date != start_time.to_date}#{end_time.hour}:#{end_time.min} : #{start} nach #{target} via #{type}"
+			"Am #{start_time.to_date} von #{start_time.to_formatted_s :time} bis #{end_time.to_date.to_s + ' ' if end_time.to_date != start_time.to_date}#{end_time.to_formatted_s :time} : #{start} nach #{target} via #{type}"
 		end
 		
 		# Set the type, e.g. Fußweg
 		def type= val
 			@type = val.squeeze(" ")
+		end
+		
+		def transport_type
+			short_type = self.type.split.first.downcase
+			if ["str", "u", "s", "re", "erb", "ic", "ice"].include? short_type
+				return :train
+			elsif ["bus", "ne"].include? short_type
+				return :bus
+			elsif "Fußweg" == short_type
+				return :foot
+			end
+			
+			# nothing else works
+			self.type
 		end
 	end
 end

@@ -8,7 +8,7 @@ module Bahn
 	# 	You can go even use far distances...
 	#	routes = agent.get_routes "Heerdter Sandberg 35 Düsseldorf, Düsseldorf", "Berlin Hauptstraße 10"
 	# 	routes.each {|route| route.parts.each {|part| puts part } }
-	#		=> Am 2013-02-01 von 17:32 bis 17:33 : Düsseldorf - Oberkassel, Heerdter Sandberg 35 nach Heerdter Sandberg U, Düsseldorf via Fußweg
+	#		=> Am 2013-02-01 von 17:32 bis 17:33 : Düsseldorf - Oberkassel, Heerdter Sandberg 60 nach Heerdter Sandberg U, Düsseldorf via Fußweg
 	#		=> Am 2013-02-01 von 17:33 bis 17:47 : Heerdter Sandberg U, Düsseldorf nach Düsseldorf Hauptbahnhof via U 7
 	#		=> Am 2013-02-01 von 17:47 bis 17:53 : Düsseldorf Hauptbahnhof nach Düsseldorf Hbf via Fußweg
 	#		=> Am 2013-02-01 von 17:53 bis 22:22 : Düsseldorf Hbf nach Berlin Hbf via ICE 945
@@ -28,6 +28,12 @@ module Bahn
 			@@user_agent = val
 		end
 		
+		TYPES = 
+			{
+				:station => 1,
+				:address => 2
+			}.freeze
+		
 		# Initialize a new Agent
 		# options:
 		#  :user_agent => Set the user agent. Default: "bahn.rb"
@@ -41,41 +47,52 @@ module Bahn
 		# :start_type and :target_type should be the same, no other options is implemented yet
 		# Options:
 		# 	* :time => start time for the connection
-		# 	* :start_type => 1 = station, 2 = address
-		# 	* :target_type => 1 = station, 2 = address
+		# 	* :start_type => :station or :address
+		# 	* :target_type => :station or :address
+		#   * :include_coords => Include coordiantes for the station. This takes a while especially for longer routes! default: true
 		# Returns:
 		# 	Array of Bahn::Route(s)
 		# Raises:
 		# 	"no_route" if no route could be found
 		def get_routes from, to, options = {}
-			options = {:time => Time.now, :start_type => 2, :target_type => 2, :depth => 0}.merge(options)
+			options = {:time => Time.now, :start_type => :address, :target_type => :address, :depth => 0, :include_coords => true, :limit => 2}.merge(options)
+			options[:time] = options[:time] + 10.minutes # Ansonsten liegt die letzte Verbindung in der Vergangenheit
+			
 			page = @agent.get @@options[:url_route]
 			form = page.forms.first
-			form["REQ0JourneyDate"] = "#{options[:time].day}.#{options[:time].month}.#{options[:time].year-2000}"
-			form["REQ0JourneyTime"] = "#{options[:time].hour}:#{options[:time].min}"
-			form["REQ0JourneyStopsS0A"] = options[:start_type]
-			form["REQ0JourneyStopsZ0A"] = options[:target_type]
+			form["REQ0JourneyDate"] = options[:time].strftime "%d.%m.%y"
+			form["REQ0JourneyTime"] = options[:time].to_formatted_s :time
+			form["REQ0JourneyStopsS0A"] = TYPES[options[:start_type]]
+			form["REQ0JourneyStopsZ0A"] = TYPES[options[:target_type]]
 			form["REQ0JourneyStopsS0G"] = from
-			form["REQ0JourneyStopsZ0G"] = to			
+			form["REQ0JourneyStopsZ0G"] = to
+			form["REQ0JourneyProduct_prod_list"] = "4:0001111111000000"
 			result = form.submit(form.button_with(:value => "Suchen"))
 			
-			type = :undefined
-			type = :door2door if options[:start_type] == 2 && options[:target_type] == 2
-			type = :station2station if options[:start_type] == 1 && options[:target_type] == 1
-
 			routes = []
 			links = result.links_with(:href => /details=opened!/)
-			links.each  do |link|
-			  page = link.click 
-			  routes << Route.new(page, type)
+			links.each do |link|
+			  page = link.click
+			  routes << Route.new(page, options)
+			  break if routes.count == options[:limit]
 			end
 			
 			# Keine Station gefunden und es werden keine Vorschläge angezeigt... 
 			# also suchen wir nachder nächstbesten Adresse und nutzen dies
-			if links.count == 0 && options[:depth] == 0 && type == :door2door
-				from = find_address from
-				to = find_address to
-				return get_routes from, to, {:time => options[:time], :depth => options[:depth]+1}
+			if links.count == 0 && options[:depth] == 0 
+				if options[:start_type] == :address
+					from = find_address(from).name
+				elsif options[:start_type] == :station
+					from = find_station(from).name
+				end
+				
+				if options[:target_type] == :address
+					to = find_address(to).name
+				elsif options[:target_type] == :station
+					to = find_station(to).name
+				end
+				
+				return get_routes from, to, options.merge(:depth => options[:depth]+1)
 			end
 			
 			raise "no_route" if routes.count == 0 || links.count == 0			
@@ -90,7 +107,7 @@ module Bahn
 			result = @agent.get("#{@@options[:uri_stations]}#{name}").body.gsub("SLs.sls=", "").gsub(";SLs.showSuggestion();", "")
 			# a Mechanize::File instead of a Page is returned so we have to convert manually
 			result = Iconv.conv("utf-8", "iso-8859-1", result)
-			r = JSON.parse(result)["suggestions"].first["value"]
+			Station.new(JSON.parse(result)["suggestions"].first)
 		end
 		
 		# Finds the first usable address for the given parameter. The returned address can then be used for further processing in routes
@@ -101,7 +118,7 @@ module Bahn
 			result = @agent.get("#{@@options[:uri_adresses]}#{address}").body.gsub("SLs.sls=", "").gsub(";SLs.showSuggestion();", "")
 			# a Mechanize::File instead of a Page is returned so we have to convert manually
 			result = Iconv.conv("utf-8", "iso-8859-1", result)
-			JSON.parse(result)["suggestions"].first["value"]
+			Station.new(JSON.parse(result)["suggestions"].first)
 		end
 	end
 end
