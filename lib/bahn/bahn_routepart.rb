@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 module Bahn
 	# Route Parts show a small step of the route from A to B with one specific type of transportation
 	# Example: "Am 2013-02-01 von 17:33 bis 17:47 : Heerdter Sandberg U, Düsseldorf nach Düsseldorf Hauptbahnhof via U 7"

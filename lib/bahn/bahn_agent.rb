@@ -106,7 +106,7 @@ module Bahn
 		def find_station name		
 			result = @agent.get("#{@@options[:uri_stations]}#{name}").body.gsub("SLs.sls=", "").gsub(";SLs.showSuggestion();", "")
 			# a Mechanize::File instead of a Page is returned so we have to convert manually
-			result = Iconv.conv("utf-8", "iso-8859-1", result)
+			result = encode result
 			Station.new(JSON.parse(result)["suggestions"].first)
 		end
 		
@@ -117,8 +117,16 @@ module Bahn
 		def find_address address		
 			result = @agent.get("#{@@options[:uri_adresses]}#{address}").body.gsub("SLs.sls=", "").gsub(";SLs.showSuggestion();", "")
 			# a Mechanize::File instead of a Page is returned so we have to convert manually
-			result = Iconv.conv("utf-8", "iso-8859-1", result)
+			result = encode result
 			Station.new(JSON.parse(result)["suggestions"].first)
+		end
+		
+		def encode str
+			if str.respond_to? :encode
+				str.force_encoding("iso-8859-1").encode("utf-8")
+			else
+				Iconv.conv("utf-8", "iso-8859-1", str)
+			end
 		end
 	end
 end
