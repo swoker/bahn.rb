@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 module Bahn
 	# The whole Route from A to B.
 	# This is created from the m.bahn.de detail view page and parses the given data.
