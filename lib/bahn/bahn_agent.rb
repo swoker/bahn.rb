@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 module Bahn
 	# Agent class that searches stations, street addresses and public transportation routes for germany
 	# Example:
