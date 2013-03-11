@@ -17,6 +17,17 @@ Example
 		)
 	# output the connection info
 	routes.each {|route| route.parts.each {|part| puts part } }
+	
+	# or with Geocoder
+	routes = agent.get_routes(
+		Geocoder.search("Düsseldorf reisholz s bahn").first, 	# start address or station
+		Geocoder.search("Düsseldorf, Heerdter Sandberg 40").first,	# target address or station
+		:include_coords => true, # include coordinates of stations
+		:limit => 1	# how many connections?
+		# you don't need start- and target-type with geocoder :)
+		)
+	# output the connection info
+	routes.each {|route| route.parts.each {|part| puts part } }
 
 How to help
 =
