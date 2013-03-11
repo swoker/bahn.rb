@@ -9,5 +9,5 @@ require 'bahn/bahn_station'
 require 'bahn/bahn_agent'
 
 module Bahn
-	VERSION = "2.0.0"
+	VERSION = "2.1.0"
 end
