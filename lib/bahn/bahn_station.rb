@@ -1,6 +1,7 @@
 module Bahn
 	class Station
-		attr_accessor :lat, :lon, :name
+		attr_accessor :lat, :lon, :distance, :name
+		
 		def initialize json={}		
 			self.name = json["value"] unless json["value"].nil?
 			
@@ -21,6 +22,11 @@ module Bahn
 		def to_s
 			"#{self.name} (#{self.lat},#{self.lon})"
 		end
+		
+		def to_coordinates
+			[lat, lon]
+		end
+		alias_method :coordinates, :to_coordinates
 		
 		def == other
 			return false if other.nil?
