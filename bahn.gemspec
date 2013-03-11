@@ -17,6 +17,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency "json", ["~> 1.6"]
   s.add_runtime_dependency "mechanize"
   s.add_runtime_dependency "activesupport"
+	s.add_runtime_dependency "geocoder"
   s.add_development_dependency "rake", [">= 0"]
 
   # If you need to check in files that aren't .rb files, add them here
