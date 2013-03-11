@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    bahn.rb (2.0.0)
+    bahn.rb (2.1.0)
       activesupport
       json (~> 1.6)
       mechanize
