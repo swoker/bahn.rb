@@ -2,39 +2,30 @@
 
 require 'test/unit'
 require 'bahn'
+require 'geocoder'
 
 class BahnTest < Test::Unit::TestCase
 	def setup
 		@agent = Bahn::Agent.new
 	end
 	
-	## use this to show the routes output
-	#def teardown
-	#	@routes.each {|route| route.parts.each {|part| puts part } }
-	#	puts "Hinweise: #{@routes.first.notes}"
-	#end
-	
 	def test_station_2_address
 		@routes = @agent.get_routes(
-			"Düsseldorf reisholz s bahn", 
-			"Düsseldorf, Heerdter Sandberg 40 ",	
+			Geocoder.search("Düsseldorf reisholz bahnhof").first, 
+			Geocoder.search("Düsseldorf, Heerdter Sandberg 40 ").first,	
 			:include_coords => true, 
-			:limit => 1,
-			:start_type => :station,
-			:target_type => :address)
-		assert_equal "Düsseldorf-Reisholz (51.180443,6.861358)", @routes.first.start.to_s
+			:limit => 1)
+		assert_equal "Reisholz S-Bahnhof, Düsseldorf (51.180218,6.862437)", @routes.first.start.to_s
 		assert_equal "Düsseldorf - Oberkassel, Heerdter Sandberg 40 (51.236059,6.737504)", @routes.first.target.to_s
 		assert_equal "Fußweg", @routes.first.parts.last.type
 	end		
 	
 	def test_address_2_station
 		@routes = @agent.get_routes(
-			"Düsseldorf, Heerdter Sandberg 40 ", 			
-			"Benrath ddorf", 
+			Geocoder.search("Düsseldorf, Heerdter Sandberg 40 ").first, 			
+			Geocoder.search("Benrath ddorf").first, 
 			:include_coords => true, 
-			:limit => 1,
-			:start_type => :address,
-			:target_type => :station)
+			:limit => 1)
 		assert_equal "Düsseldorf - Oberkassel, Heerdter Sandberg 40 (51.236059,6.737504)", @routes.first.start.to_s
 		assert_equal "Fußweg", @routes.first.parts.first.type
 		assert_equal "Düsseldorf-Benrath (51.162375,6.879040)", @routes.first.target.to_s
@@ -42,27 +33,59 @@ class BahnTest < Test::Unit::TestCase
 	
 	def test_station_2_station
 		@routes = @agent.get_routes(
-			"Düsseldorf hbf", 
-			"Düsseldorf - Heerdter Sandberg U", 			
+			Geocoder.search("Düsseldorf hbf").first, 
+			Geocoder.search("Düsseldorf - Heerdter Sandberg U").first, 			
 			:include_coords => true, 
-			:limit => 1,
-			:start_type => :station,
-			:target_type => :station)
+			:limit => 1)
+		assert_equal "Düsseldorf Hauptbahnhof (51.219960,6.794316)", @routes.first.start.to_s
+		assert_equal "Heerdter Sandberg U, Düsseldorf (51.236509,6.739042)", @routes.first.target.to_s
+	end		
+  
+  
+	def test_station_2_station_2
+		@routes = @agent.get_routes(
+			Geocoder.search("Düsseldorf hbf").first, 
+			Geocoder.search("Düsseldorf Heerdter Sandberg").first, 			
+			:include_coords => true, 
+			:limit => 1)
 		assert_equal "Düsseldorf Hauptbahnhof (51.219960,6.794316)", @routes.first.start.to_s
 		assert_equal "Heerdter Sandberg U, Düsseldorf (51.236509,6.739042)", @routes.first.target.to_s
 	end		
 	
+	
 	def test_address_2_address
 		@routes = @agent.get_routes(
-			"Düsseldorf Winkelsfelder str. 60", 
-			"Düsseldorf, Heerdter Sandberg 40 ", 			
+			Geocoder.search("Düsseldorf Winkelsfelder str. 60").first, 
+			Geocoder.search("Düsseldorf, Heerdter Sandberg 40 ").first, 			
 			:include_coords => true, 
-			:limit => 1,
-			:start_type => :address,
-			:target_type => :address)
+			:limit => 1)
 		assert_equal "Düsseldorf - Pempelfort, Winkelsfelder Straße 45 (51.239772,6.785902)", @routes.first.start.to_s
 		assert_equal "Düsseldorf - Oberkassel, Heerdter Sandberg 40 (51.236059,6.737504)", @routes.first.target.to_s
 		assert_equal "Fußweg", @routes.first.parts.last.type
 		assert_equal "Fußweg", @routes.first.parts.first.type
-	end		
+	end
+	
+	def test_station_wrong_location
+		@routes = @agent.get_routes(
+			Geocoder.search("Prenzlauer Berg, Berlin, Germany").first,
+			Geocoder.search("Berlin Hauptbahnhof").first,
+			:include_coords => true, 
+			:limit => 1
+		)
+  
+		assert @routes.first.start.to_s.starts_with?("Prenzlauer")
+		assert @routes.first.target.to_s.starts_with?("Berlin Hbf")
+	end
+	
+	# ss and ß make problems sometimes, so here we test if the start is 
+	# at least the street right next to the correct street
+	def test_rossstr_duesseldorf
+		@routes = @agent.get_routes(
+			Geocoder.search("Düsseldorf Roßstraße 42 düsseldorf").first, 
+			Geocoder.search("Düsseldorf, Heerdter Sandberg 40 ").first, 			
+			:include_coords => true, 
+			:limit => 1)
+		assert_equal "Düsseldorf - Derendorf, Römerstraße 2-27 (51.245075,6.783080)", @routes.first.start.to_s
+		assert_equal "Düsseldorf - Oberkassel, Heerdter Sandberg 40 (51.236059,6.737504)", @routes.first.target.to_s
+	end
 end
