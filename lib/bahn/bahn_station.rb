@@ -3,10 +3,10 @@ module Bahn
 		attr_accessor :lat, :lon, :distance, :name
 		
 		def initialize json={}		
-			self.name = json["value"] unless json["value"].nil?
+			self.name = json["value"].to_s.gsub("(S-Bahn)", "(S)") unless json["value"].nil?
 			
 			if json[:do_load]
-				station = Agent.new.find_station(name) if json[:load] == :station			
+				station = Agent.new.find_station(name) if json[:load] == :station
 				station = Agent.new.find_address(name) if json[:load] == :foot
 			end
 			

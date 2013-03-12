@@ -3,6 +3,7 @@ PATH
   specs:
     bahn.rb (2.1.1)
       activesupport
+      geocoder
       json (~> 1.6)
       mechanize
 
