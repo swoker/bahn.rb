@@ -30,7 +30,20 @@ module Bahn
 		
 		def == other
 			return false if other.nil?
-			other.name == self.name
+			remove_parenthesis(other.name) == remove_parenthesis(name)
+		end
+		
+		
+		#############################################
+		private
+		#############################################
+		
+		# Often we have stations like "Berlin Gesundbrunnen (S)" and "Berlin Gesundbrunnen" 
+		# we want these stations to be different
+		def remove_parenthesis string
+			x = string.dup
+			while x.gsub!(/\([^()]*\)/,""); end
+			x.strip
 		end
 	end
 end
