@@ -145,8 +145,9 @@ module Bahn
 		
 		def check_point_type geocoder_result
 			return nil unless geocoder_result.is_a? Geocoder::Result::Base
+			return :station if geocoder_result.types.include?("transit_station")
 			return :address unless geocoder_result.address_components.index{|a| a["types"].include?("route")}.nil?
-			return :station if geocoder_result.address_components.index{|a| a["types"].include?("train_station") || a["types"].include?("transit_station")}.nil?
+			return :address if geocoder_result.types.include?("street_address")
 			return :station
 		end
 		
