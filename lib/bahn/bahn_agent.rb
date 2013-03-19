@@ -144,21 +144,29 @@ module Bahn
 		end
 		
 		def check_point_type geocoder_result
-			return nil unless geocoder_result.is_a? Geocoder::Result::Base
-			return :station if geocoder_result.types.include?("transit_station")
-			return :address unless geocoder_result.address_components.index{|a| a["types"].include?("route")}.nil?
-			return :address if geocoder_result.types.include?("street_address")
+			return nil unless geocoder_result.respond_to?(:types)
+			return :station if geocoder_result.types.include?("transit_station") # subway, bus, ...
+			
+			return :address if geocoder_result.types.include?("street_address") # full address
+			return :address if geocoder_result.types.include?("route") # street name only
+			return :address if geocoder_result.types.include?("postal_code") # plz only
+			
+			# (sub-)locality or political or anything else => treat as station (most likely main station)
 			return :station
 		end
 		
 		def get_address_or_station geocoder_result, type
-			return geocoder_result.to_s unless geocoder_result.is_a? Geocoder::Result::Base
+			return geocoder_result.to_s unless geocoder_result.respond_to?(:address)
 			addy = geocoder_result.address
 			if type == :station
-				begin
-					addy = geocoder_result.address_components.find{|a| a["types"].include? "transit_station"}["short_name"]
-					addy += " #{geocoder_result.city}" unless addy.include?(geocoder_result.city)
-				rescue StandardError
+				return addy = geocoder_result.transit_station if geocoder_result.respond_to?(:transit_station)
+				if geocoder_result.respond_to?(:address_components_of_type)#
+					begin
+						addy = geocoder_result.address_components_of_type("transit_station").first["short_name"]
+						addy += " #{geocoder_result.city}" unless addy.include?(geocoder_result.city)
+					rescue StandardError
+						# use address instead
+					end
 				end
 			end
 			addy
