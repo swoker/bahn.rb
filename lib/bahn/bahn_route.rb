@@ -42,14 +42,14 @@ module Bahn
 			if options[:start_type] == :address
 				@start.start = Station.new({"value" => route[0], :load => :foot, :do_load => @do_load})
 				@start.type = "Fußweg" # route[2]
-				@start.end_time = DateTime.parse(summary_time.split("-").first.gsub(".13", ".2013"))
+				@start.end_time = parse_date(summary_time.split("-").first.gsub(".13", ".2013"))
 				@start.start_time = @start.end_time - route[1].to_i.minutes
 				@start.target = route[3]
 			elsif	options[:start_type] == :station
 				@start.start = Station.new({"value" => route[0], :load => :station, :do_load => @do_load})
-				@start.start_time = DateTime.parse(@date.to_s + route[1])
+				@start.start_time = parse_date(@date.to_s + route[1])
 				@start.type = route[2]
-				@start.end_time = DateTime.parse(@date.to_s + route[3])
+				@start.end_time = parse_date(@date.to_s + route[3])
 				@start.target = Station.new({"value" => route[4], :load => :station, :do_load => @do_load})
 				idx = 4
 			end
@@ -63,10 +63,10 @@ module Bahn
 				@target.target = Station.new({"value" => route.last, :load => :foot, :do_load => @do_load})
 				if summary_time.split("-").last.strip.length != 5
 					# Date is included in the string
-					@target.end_time = DateTime.parse(summary_time.split("-").last.gsub(".13", ".2013"))
+					@target.end_time = parse_date(summary_time.split("-").last.gsub(".13", ".2013"))
 				else
 					# no date given, use start date
-					@target.end_time = DateTime.parse("#{@start.start_time.to_date} #{summary_time.split("-").last}")
+					@target.end_time = parse_date("#{@start.start_time.to_date} #{summary_time.split("-").last}")
 				end
 				
 				@target.end_time += route[route.length-3].to_i.minutes				
@@ -114,8 +114,8 @@ module Bahn
 				part.type = route[i+2].squeeze
 				
 				begin
-					part.start_time = DateTime.parse(@date.to_s + route[i+1])
-					part.end_time = DateTime.parse(@date.to_s + route[i+3])
+					part.start_time = parse_date(@date.to_s + route[i+1])
+					part.end_time = parse_date(@date.to_s + route[i+3])
 					part.target = Station.new({"value" => route[i+4], :load => :station, :do_load => @do_load})
 					i += 4
 				rescue ArgumentError
@@ -141,5 +141,11 @@ module Bahn
 				@target.start = @parts.last.start 
 			end
 		end
+    
+    def parse_date to_parse
+      to_parse = DateTime.parse(to_parse).to_s
+      to_parse = to_parse.gsub("+00:00", "+0100").gsub("+0000", "+0100")
+      DateTime.parse to_parse
+    end
 	end
 end
