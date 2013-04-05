@@ -26,9 +26,16 @@ module Bahn
 			route = ""
 			html_parts.each do |part|
 				text = part.text.strip
-				next if text.start_with?("Reiseprofil") || text.include?("Einfache Fahrt") # not important
+         # not important
+				if (text.start_with?("Reiseprofil") \
+              || text.include?("Einfache Fahrt") \
+              || text.include?("Preisinformationen") \
+              || text.include?("Weitere Informationen") \
+              || text.include?("Start/Ziel mit äquivalentem Bahnhof ersetzt"))
+          next
+        end
 				if text.starts_with?("Hinweis", "Aktuelle Informationen")
-					self.notes = "#{self.notes}\n#{text}" if !text.include?("Start/Ziel mit äquivalentem Bahnhof ersetzt")
+					self.notes = "#{self.notes}\n#{text}"
 					next
 				end
 				
