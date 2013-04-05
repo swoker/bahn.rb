@@ -22,7 +22,7 @@ module Bahn
 		@@options = {
 			:url_route => 'http://mobile.bahn.de/bin/mobil/query.exe/dox?country=DEU&rt=1&use_realtime_filter=1&searchMode=ADVANCED',
 			:uri_adresses => 'http://reiseauskunft.bahn.de/bin/ajax-getstop.exe/en?REQ0JourneyStopsS0A=2&REQ0JourneyStopsS0G=',
-			:uri_stations => 'http://reiseauskunft.bahn.de/bin/ajax-getstop.exe/en?REQ0JourneyStopsS0A=1&REQ0JourneyStopsS0G='			
+			:uri_stations => 'http://reiseauskunft.bahn.de/bin/ajax-getstop.exe/en?REQ0JourneyStopsS0A=1&REQ0JourneyStopsS0G='
 		}
 	
 		# Set the used user agent
@@ -72,7 +72,7 @@ module Bahn
 			
 			# Keine Station gefunden und es werden keine Vorschläge angezeigt... 
 			# also suchen wir nach der nächstbesten Adresse/Station und nutzen diese
-			if links.count == 0 && options[:depth] == 0 
+			if links.count == 0 && options[:depth] == 0
 				if options[:start_type] == :address
 					from = find_address(from, options).name
 				elsif options[:start_type] == :station
@@ -156,11 +156,13 @@ module Bahn
 		end
 		
 		def get_address_or_station geocoder_result, type
-			return geocoder_result.to_s unless geocoder_result.respond_to?(:address)
-			addy = geocoder_result.address
+			return geocoder_result.to_s unless geocoder_result.respond_to?(:address)      
+      addy = ""
+      
 			if type == :station
-				return addy = geocoder_result.transit_station if geocoder_result.respond_to?(:transit_station)
-				if geocoder_result.respond_to?(:address_components_of_type)#
+				addy = geocoder_result.transit_station if geocoder_result.respond_to?(:transit_station)
+        
+				if geocoder_result.respond_to?(:address_components_of_type)
 					begin
 						addy = geocoder_result.address_components_of_type("transit_station").first["short_name"]
 						addy += " #{geocoder_result.city}" unless addy.include?(geocoder_result.city)
@@ -169,6 +171,11 @@ module Bahn
 					end
 				end
 			end
+      
+      if addy.to_s.empty?
+        addy = geocoder_result.address
+      end
+      
 			addy
 		end
 		
