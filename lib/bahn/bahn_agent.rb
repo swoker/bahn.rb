@@ -142,6 +142,14 @@ module Bahn
 				Iconv.conv("utf-8", "iso-8859-1", str)
 			end
 		end
+    
+    def encode_to_iso str
+      if str.respond_to? :encode
+				str.encode("iso-8859-1")
+			else
+				Iconv.conv("iso-8859-1", "utf-8", str)
+			end
+    end
 		
 		def check_point_type geocoder_result
 			return nil unless geocoder_result.respond_to?(:types)
@@ -184,8 +192,8 @@ module Bahn
 			form["REQ0JourneyTime"] = options[:time].to_formatted_s :time
 			form["REQ0JourneyStopsS0A"] = TYPES[options[:start_type]]
 			form["REQ0JourneyStopsZ0A"] = TYPES[options[:target_type]]
-			form["REQ0JourneyStopsS0G"] = get_address_or_station(from, options[:start_type])
-			form["REQ0JourneyStopsZ0G"] = get_address_or_station(to, options[:target_type])
+			form["REQ0JourneyStopsS0G"] = encode_to_iso(get_address_or_station(from, options[:start_type]))
+			form["REQ0JourneyStopsZ0G"] = encode_to_iso(get_address_or_station(to, options[:target_type]))
 			form["REQ0JourneyProduct_prod_list"] = "4:0001111111000000"
 			form.submit(form.button_with(:value => "Suchen"))
 		end

@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 require File.expand_path("../lib/bahn/version", __FILE__)
 require 'base64'
 
