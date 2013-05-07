@@ -10,3 +10,4 @@ gem 'activesupport'
 gem 'json'
 gem "rake"
 gem 'geocoder', '~> 1.1.6'
+gem 'tzinfo'

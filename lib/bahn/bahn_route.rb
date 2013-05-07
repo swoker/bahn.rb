@@ -151,7 +151,8 @@ module Bahn
     
     def parse_date to_parse
       to_parse = DateTime.parse(to_parse).to_s
-      to_parse = to_parse.gsub("+00:00", "+0100").gsub("+0000", "+0100")
+      time_zone = DateTime.now.in_time_zone("Berlin").strftime("%z")
+      to_parse = to_parse.gsub("+00:00", time_zone).gsub("+0000", time_zone)
       DateTime.parse to_parse
     end
 	end
