@@ -57,7 +57,7 @@ module Bahn
 			options[:start_type] = check_point_type(from) || options[:start_type]
 			options[:target_type] =  check_point_type(to) || options[:target_type]
 			options = {:time => Time.now, :depth => 0, :include_coords => true, :limit => 2}.merge(options)
-			options[:time] = options[:time] + 10.minutes # Ansonsten liegt die letzte Verbindung in der Vergangenheit			
+			options[:time] = options[:time].in_time_zone("Berlin") + 10.minutes # Ansonsten liegt die letzte Verbindung in der Vergangenheit
 			page = @agent.get @@options[:url_route]
 			
 			result = submit_form page.forms.first, from, to, options		
