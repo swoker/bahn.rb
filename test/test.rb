@@ -15,7 +15,8 @@ class BahnTest < Test::Unit::TestCase
   		Geocoder.search("Düsseldorf, Heerdter Sandberg 40 ").first,	
   		:include_coords => true, 
   		:limit => 1)
-  	assert_equal "Reisholz S-Bahnhof, Düsseldorf (51.180218,6.862437)", @routes.first.start.to_s
+  	assert @routes.first.start.to_s.include?("Reisholz"), "but was #{@routes.first.start}"
+    assert @routes.first.start.to_s.include?("Düsseldorf"), "but was #{@routes.first.start}"
   	assert_equal "Düsseldorf - Oberkassel, Heerdter Sandberg 40 (51.236059,6.737504)", @routes.first.target.to_s
   	assert_equal "Fußweg", @routes.first.parts.last.type
   end		
@@ -28,7 +29,8 @@ class BahnTest < Test::Unit::TestCase
   		:limit => 1)
   	assert_equal "Düsseldorf - Oberkassel, Heerdter Sandberg 40 (51.236059,6.737504)", @routes.first.start.to_s
   	assert_equal "Fußweg", @routes.first.parts.first.type
-  	assert_equal "Düsseldorf-Benrath (51.162375,6.879040)", @routes.first.target.to_s
+  	assert @routes.first.target.to_s.include?("Düsseldorf"), "but was #{@routes.first.target}"
+    assert @routes.first.target.to_s.include?("Benrath"), "but was #{@routes.first.target}"
   end		
   
   def test_station_2_station
@@ -99,7 +101,18 @@ class BahnTest < Test::Unit::TestCase
       :limit => 1
     )
     
-    assert @routes.first.start.to_s.include? "Köln"
-		assert @routes.first.target.to_s.include? "Düsseldorf"
+    assert @routes.first.start.to_s.include?("Köln"), "was #{@routes.first.start}"
+		assert @routes.first.target.to_s.include?("Düsseldorf"), "was #{@routes.first.target}"
+  end
+  
+  def test_muc_to_muc
+    @routes = @agent.get_routes(
+  		Geocoder.search("Clemensstraße, München, Deutschland").first, 
+  		Geocoder.search("Am Eisbach 4, 0538 München, Deutschland").first, 			
+  		:include_coords => true, 
+  		:limit => 1)
+  
+  	assert_equal "Clemensstraße, München (48.163492,11.574465)", @routes.first.start.to_s
+  	assert_equal "München - Schwabing, Am Eisbach 4 (48.154494,11.600291)", @routes.first.target.to_s
   end
 end

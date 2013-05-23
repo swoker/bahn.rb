@@ -1,6 +1,6 @@
 module Bahn
 	class Station
-		attr_accessor :lat, :lon, :distance, :name
+		attr_accessor :lat, :lon, :distance, :name, :station_type
 		
 		def initialize json={}		
 			self.name = json["value"].to_s.gsub("(S-Bahn)", "(S)") unless json["value"].nil?

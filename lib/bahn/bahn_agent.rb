@@ -22,7 +22,8 @@ module Bahn
 		@@options = {
 			:url_route => 'http://mobile.bahn.de/bin/mobil/query.exe/dox?country=DEU&rt=1&use_realtime_filter=1&searchMode=ADVANCED',
 			:uri_adresses => 'http://reiseauskunft.bahn.de/bin/ajax-getstop.exe/en?REQ0JourneyStopsS0A=2&REQ0JourneyStopsS0G=',
-			:uri_stations => 'http://reiseauskunft.bahn.de/bin/ajax-getstop.exe/en?REQ0JourneyStopsS0A=1&REQ0JourneyStopsS0G='
+			:uri_stations => 'http://reiseauskunft.bahn.de/bin/ajax-getstop.exe/en?REQ0JourneyStopsS0A=1&REQ0JourneyStopsS0G=',
+			:uri_stations_near => 'http://mobile.bahn.de/bin/mobil/query.exe/dox?ld=9627&n=1&rt=1&use_realtime_filter=1&performLocating=2&tpl=stopsnear&look_maxdist=1000&look_stopclass=1023&look_y=%i&look_x=%i'
 		}
 	
 		# Set the used user agent
@@ -47,17 +48,17 @@ module Bahn
 		# Get the next few routes with public transportation from A to B.
 		#
 		# Options:
-		# 	* :time => start time for the connection
+		#   * :time => start time for the connection
 		#   * :include_coords => Include coordiantes for the station. This takes a while especially for longer routes! default: true
 		# Returns:
-		# 	Array of Bahn::Route(s)
+		#   Array of Bahn::Route(s)
 		# Raises:
-		# 	"no_route" if no route could be found
+		#   "no_route" if no route could be found
 		def get_routes from, to, options = {}
 			options[:start_type] = check_point_type(from) || options[:start_type]
-			options[:target_type] =  check_point_type(to) || options[:target_type]
+			options[:target_type] =	check_point_type(to) || options[:target_type]
 			options = {:time => Time.now, :depth => 0, :include_coords => true, :limit => 2}.merge(options)
-			options[:time] = options[:time].in_time_zone("Berlin") + 10.minutes # Ansonsten liegt die letzte Verbindung in der Vergangenheit
+			options[:time] = options[:time].in_time_zone("Berlin") + 10.minutes # Ansonsten liegt die erste Verbindung in der Vergangenheit
 			page = @agent.get @@options[:url_route]
 			
 			result = submit_form page.forms.first, from, to, options		
@@ -65,26 +66,33 @@ module Bahn
 			routes = []
 			links = result.links_with(:href => /details=opened!/)
 			links.each do |link|
-			  page = link.click
-			  routes << Route.new(page, options)
-			  break if routes.count == options[:limit]
+				page = link.click
+				routes << Route.new(page, options)
+				break if routes.count == options[:limit]
 			end
 			
-			# Keine Station gefunden und es werden keine Vorschläge angezeigt... 
-			# also suchen wir nach der nächstbesten Adresse/Station und nutzen diese
+			# Keine Station gefunden also suchen wir nach der nächstbesten Adresse/Station
 			if links.count == 0 && options[:depth] == 0
 				if options[:start_type] == :address
-					from = find_address(from, options).name
+					from = find_address(from, options)
+					options[:start_type] = from.station_type
+					from = from.name
 				elsif options[:start_type] == :station
-					from = find_station(from, options).name
+					from = find_station(from, options)
+					options[:start_type] = from.station_type
+					from = from.name
 				end
 				
 				if options[:target_type] == :address
-					to = find_address(to, options).name
+					to = find_address(to, options)
+					options[:target_type] = to.station_type
+					to = to.name
 				elsif options[:target_type] == :station
-					to = find_station(to, options).name
+					to = find_station(to, options)
+					options[:target_type] = to.station_type
+					to = to.name
 				end
-
+				
 				return get_routes from, to, options.merge(:depth => options[:depth]+1)
 			end
 			
@@ -94,24 +102,46 @@ module Bahn
 		
 		# Find the first best station by name
 		# Example:
-		# 	Input: HH Allee Düsseldorf
-		# 	Output: Heinrich-Heine-Allee U, Düsseldorf
+		#   Input: HH Allee Düsseldorf
+		#   Output: Heinrich-Heine-Allee U, Düsseldorf
 		def find_station name, options={}
 			val = get_address_or_station(name, :station)
-			options[:coords] = name.coordinates if name.respond_to?(:coordinates)
+			options[:coords] = name.respond_to?(:coordinates) ? name.coordinates : nil
 			result = @agent.get("#{@@options[:uri_stations]}#{val}").body.gsub("SLs.sls=", "").gsub(";SLs.showSuggestion();", "")
+			options[:current_station_type] = :station
 			find_nearest_station result, options
 		end
 		
 		# Finds the first usable address for the given parameter. The returned address can then be used for further processing in routes
 		# Example: 
-		# 	Input: Roßstr. 41 40476 Düsseldorf 
-		# 	Output: Düsseldorf - Golzheim, Rossstraße 41
+		#   Input: Roßstr. 41 40476 Düsseldorf 
+		#   Output: Düsseldorf - Golzheim, Rossstraße 41
 		def find_address address, options={}
 			val = get_address_or_station(address, :address)
-			options[:coords] = address.coordinates if address.respond_to?(:coordinates)
+			options[:coords] = address.respond_to?(:coordinates) ? address.coordinates : nil
 			result = @agent.get("#{@@options[:uri_adresses]}#{val}").body.gsub("SLs.sls=", "").gsub(";SLs.showSuggestion();", "")
+			options[:current_station_type] = :address
 			find_nearest_station result, options
+		end
+		
+		def find_station_at lat, lon, options={}
+			uri = @@options[:uri_stations_near] % [(lat * 1000000), (lon * 1000000)]
+			result = @agent.get(uri)
+			link = result.links.select{|l| l.href.include?("HWAI=STATION!")}.first
+			unless link.nil?
+				s = Station.new({:do_load => false})
+				s.name = link.text
+				lat_match = link.href.match(/Y=(\d{7,})/)
+				s.lat = lat_match[1].insert(-7, ".") unless lat_match.nil?
+				lon_match = link.href.match(/X=(\d{7,})/)
+				s.lon = lon_match[1].insert(-7, ".") unless lon_match.nil?
+				# not needed but hey, since we got it ;)
+				dist_match = link.href.match(/dist=(\d+)!/)
+				s.distance = (dist_match[1].to_i / 1000) unless dist_match.nil? # meter to km
+				s.station_type = :station
+				return s
+			end
+			nil
 		end
 		
 		############################################################################################
@@ -125,13 +155,20 @@ module Bahn
 
 			if options[:coords].nil?
 				s = Station.new(result.first)
+				s.station_type = options[:current_station_type]
 			else
-				result.map!{|r| Station.new(r)}
-				result.each {|s| s.distance = Geocoder::Calculations.distance_between(options[:coords], s)}
+				result.map! {|r| Station.new(r)}
+				result.each {|s| s.distance = Geocoder::Calculations.distance_between(options[:coords], s, :units => :km)}
 				result.sort! {|a,b| a.distance <=> b.distance}
 				s = result.first
+				s.station_type = options[:current_station_type]
+				
+				# more than 1 km? This seems to be wrong...
+				if s.distance > 1
+					nearest_station = find_station_at options[:coords][0], options[:coords][1]
+					s = nearest_station if nearest_station
+				end
 			end
-
 			s
 		end
 		
@@ -142,14 +179,14 @@ module Bahn
 				Iconv.conv("utf-8", "iso-8859-1", str)
 			end
 		end
-    
-    def encode_to_iso str
-      if str.respond_to? :encode
+		
+		def encode_to_iso str
+			if str.respond_to? :encode
 				str.encode("iso-8859-1")
 			else
 				Iconv.conv("iso-8859-1", "utf-8", str)
 			end
-    end
+		end
 		
 		def check_point_type geocoder_result
 			return nil unless geocoder_result.respond_to?(:types)
@@ -164,12 +201,12 @@ module Bahn
 		end
 		
 		def get_address_or_station geocoder_result, type
-			return geocoder_result.to_s unless geocoder_result.respond_to?(:address)      
-      addy = ""
-      
+			return geocoder_result.to_s unless geocoder_result.respond_to?(:address)			
+			addy = ""
+			
 			if type == :station
 				addy = geocoder_result.transit_station if geocoder_result.respond_to?(:transit_station)
-        
+				
 				if geocoder_result.respond_to?(:address_components_of_type)
 					begin
 						addy = geocoder_result.address_components_of_type("transit_station").first["short_name"]
@@ -179,11 +216,11 @@ module Bahn
 					end
 				end
 			end
-      
-      if addy.to_s.empty?
-        addy = geocoder_result.address
-      end
-      
+			
+			if addy.to_s.empty?
+				addy = geocoder_result.address
+			end
+			
 			addy
 		end
 		
