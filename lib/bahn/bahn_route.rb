@@ -18,67 +18,69 @@ module Bahn
 			@do_load = options[:include_coords]
 			self.start_type = options[:start_type]
 			self.target_type = options[:target_type]
-			summary_time = page.search("//div[contains(@class, 'querysummary2')]").text.gsub("\n", " ").strip
-			html_parts = page.search("//div[contains(@class, 'haupt')]")
-			price = html_parts.pop.text
-			html_parts.pop
-
-			route = ""
-			html_parts.each do |part|
-				text = part.text.strip
-         # not important
-				if (text.start_with?("Reiseprofil") \
-              || text.include?("Einfache Fahrt") \
-              || text.include?("Preisinformationen") \
-              || text.include?("Weitere Informationen") \
-              || text.include?("Start/Ziel mit äquivalentem Bahnhof ersetzt"))
-          next
-        end
-				if text.starts_with?("Hinweis", "Aktuelle Informationen")
-					self.notes = "#{self.notes}\n#{text}"
-					next
-				end
-				
-				route << text << "\n"
-			end
+			summary_time = page.search("//div[contains(@class, 'querysummary2')]").text.strip
+       
+      # we'll add it for now...
+      #includes = ["Einfache Fahrt", "Preisinformationen", "Weitere Informationen", "Start/Ziel mit äquivalentem Bahnhof ersetzt"]
+      #start_withs = ["Reiseprofil", "Hinweis", "Aktuelle Informationen"]
+      notes = page.search("//div[contains(@class, 'haupt rline')]").map(&:text).map(&:strip)      
       
-			route = route.split("\n")			
-			idx = 3
-			@start = RoutePart.new
-			@target = RoutePart.new
-			if options[:start_type] == :address
-				@start.start = Station.new({"value" => route[0], :load => :foot, :do_load => @do_load})
-				@start.type = "Fußweg" # route[2]
-				@start.end_time = parse_date(summary_time.split("-").first.gsub(".13", ".2013"))
-				@start.start_time = @start.end_time - route[1].to_i.minutes
-				@start.target = route[3]
-			elsif	options[:start_type] == :station
-				@start.start = Station.new({"value" => route[0], :load => :station, :do_load => @do_load})
-				@start.start_time = parse_date(@date.to_s + route[1])
-				@start.type = route[2]
-				@start.end_time = parse_date(@date.to_s + route[3])
-				@start.target = Station.new({"value" => route[4], :load => :station, :do_load => @do_load})
-				idx = 4
-			end
-			
-			@date = @start.start_time.to_date # otherwise all dates will be "today"
-			create_parts idx, route
-			if options[:target_type] == :station
-				@target = @parts.last
-			elsif options[:target_type] == :address
-				@target.type = "Fußweg"
-				@target.target = Station.new({"value" => route.last, :load => :foot, :do_load => @do_load})
-				if summary_time.split("-").last.strip.length != 5
-					# Date is included in the string
-					@target.end_time = parse_date(summary_time.split("-").last.gsub(".13", ".2013"))
-				else
-					# no date given, use start date
-					@target.end_time = parse_date("#{@start.start_time.to_date} #{summary_time.split("-").last}")
-				end
-				
-				@target.end_time += route[route.length-3].to_i.minutes				
-				@parts << @target
-			end
+      change = page.search("//div[contains(@class, 'routeStart')]")
+      name = station_to_name change
+      type = page.search("//div[contains(@class, 'routeStart')]/following::*[1]").text.strip
+      last_lines = get_lines(change)
+
+      part = RoutePart.new
+      part.type = type
+      part.start_time = part.start_time = parse_date(summary_time.split("\n").first)
+      part.start_time -= last_lines.last.to_i.minutes if options[:start_type] == :address
+      part.start = Station.new({"value" => name, :load => options[:start_type] == :address ? :foot : :station, :do_load => @do_load})
+      
+      @parts = [part]
+      
+      page.search("//div[contains(@class, 'routeChange')]").each_with_index do |change, idx|
+        part = RoutePart.new
+        name = station_to_name change
+        type = page.search("//div[contains(@class, 'routeChange')][#{idx+1}]/following::*[1]").text.strip
+        lines = change.text.split("\n")
+        
+        part.type = type
+        part.start = Station.new({"value" => name, :load => :station, :do_load => @do_load})
+        
+        lines = get_lines(change)
+        if lines.last.start_with?("ab")
+          part.start_time = parse_date(lines.last)
+          unless lines.first.starts_with?("an")
+            @parts.last.end_time = @parts.last.start_time + last_lines.last.to_i.minutes
+          end
+        end
+        
+        if lines.first.starts_with?("an")
+          @parts.last.end_time = parse_date(lines.first)          
+          unless lines.last.start_with?("ab")
+            # Fußweg for part
+            part.start_time = @parts.last.end_time
+          end
+        end
+       
+        last_lines = lines
+        
+        @parts.last.target = part.start
+        @parts << part #unless @parts.last.start == part.start
+      end
+      
+      
+      change = page.search("//div[contains(@class, 'routeEnd')]")
+      name = station_to_name change
+      @parts.last.target = Station.new({"value" => name, :load => options[:target_type] == :address ? :foot : :station, :do_load => @do_load})
+      lines = get_lines(change)
+
+      if lines.first.starts_with?("an")
+        @parts.last.end_time = parse_date(lines.first)
+      else
+        @parts.last.end_time = @parts.last.start_time + last_lines.last.to_i.minutes
+      end
+      
 		end
 		
 		# Start time of the  route
@@ -103,53 +105,17 @@ module Bahn
 		
 		private
 		
-		# Create all general parts.
-		# Set @parts, @target and @date first!
-		def create_parts start_index, route
-			@parts = [@start]
-			i = start_index
-			done_anything = false
-			while i < route.length do
-				if route[i..i+4].count != 5 || route[i..i+4].include?(nil)
-					break
-				end
-				
-				done_anything = true
-				part = RoutePart.new
-				part.start = Station.new({"value" => route[i], :load => :station, :do_load => @do_load})
-				@parts.last.target = part.start
-				part.type = route[i+2].squeeze
-				
-				begin
-					part.start_time = parse_date(@date.to_s + route[i+1])
-					part.end_time = parse_date(@date.to_s + route[i+3])
-					part.target = Station.new({"value" => route[i+4], :load => :station, :do_load => @do_load})
-					i += 4
-				rescue ArgumentError
-					# occures if there is a "Fußweg" in between
-					part.start_time = @parts.last.end_time
-					part.end_time = part.start_time + route[i+1].to_i.minutes
-					part.target = Station.new({"value" => route[i+3], :load => :foot, :do_load => @do_load})
-					i += 3
-				end	
-				
-				part.end_time += 1.day if part.end_time.hour < @start.start_time.hour
-				part.start_time += 1.day if part.start_time.hour < @start.start_time.hour
-				
-				@target.start_time = part.end_time
-				@target.start = part.target
-				
-				# we don't want to show Fußwege from and to the same station
-				@parts << part unless part.start == part.target
-			end
-			
-			unless done_anything
-				@target.start_time = @parts.last.end_time
-				@target.start = @parts.last.start 
-			end
-		end
+    def station_to_name change
+      # remove +0-xx delays
+      change.search("span").text.strip.gsub(/^\+\d+/, "").gsub(/\+\d+$/, "")
+    end
+    
+    def get_lines change
+      change.text.split("\n").reject{|s| s.to_s.length == 0}
+    end
     
     def parse_date to_parse
+      to_parse = to_parse.gsub(".#{DateTime.now.year.to_s[2..4]} ", ".#{DateTime.now.year.to_s} ")
       to_parse = DateTime.parse(to_parse).to_s
       time_zone = DateTime.now.in_time_zone("Berlin").strftime("%z")
       to_parse = to_parse.gsub("+00:00", time_zone).gsub("+0000", time_zone)

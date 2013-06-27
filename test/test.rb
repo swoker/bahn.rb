@@ -75,9 +75,9 @@ class BahnTest < Test::Unit::TestCase
   		:limit => 1
   	)
   
-  	assert @routes.first.start.to_s.starts_with?("Prenzlauer")
-  	assert @routes.first.target.to_s.starts_with?("Berlin Hbf")
-  	assert @routes.first.parts.last.target.to_s.starts_with?("Berlin Hbf")
+  	assert @routes.first.start.to_s.starts_with?("Prenzlauer"), "but was #{@routes.first.start.to_s}"
+  	assert @routes.first.target.to_s.starts_with?("Berlin Hbf"), "but was #{@routes.first.target.to_s}"
+  	assert @routes.first.parts.last.target.to_s.starts_with?("Berlin Hbf"), "but was #{@routes.first.parts.last.target.to_s}"
   end
   
   # ss and ß make problems sometimes, so here we test if the start is 

@@ -42,6 +42,7 @@ module Bahn
 		#  :user_agent => Set the user agent. Default: "bahn.rb"
 		def initialize
 			@agent = Mechanize.new
+      @agent.history.max_size=0
 			@agent.user_agent = @@user_agent ||= "bahn.rb"
 		end
 		
@@ -231,7 +232,7 @@ module Bahn
 			form["REQ0JourneyStopsZ0A"] = TYPES[options[:target_type]]
 			form["REQ0JourneyStopsS0G"] = encode_to_iso(get_address_or_station(from, options[:start_type]))
 			form["REQ0JourneyStopsZ0G"] = encode_to_iso(get_address_or_station(to, options[:target_type]))
-			form["REQ0JourneyProduct_prod_list"] = "4:0001111111000000"
+			#form["REQ0JourneyProduct_prod_list"] = "4:0001111111000000"
 			form.submit(form.button_with(:value => "Suchen"))
 		end
 	end
