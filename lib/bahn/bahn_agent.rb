@@ -110,6 +110,7 @@ module Bahn
 			options[:coords] = name.respond_to?(:coordinates) ? name.coordinates : nil
 			result = @agent.get("#{@@options[:uri_stations]}#{val}").body.gsub("SLs.sls=", "").gsub(";SLs.showSuggestion();", "")
 			options[:current_station_type] = :station
+      options[:searched_name] = name
 			find_nearest_station result, options
 		end
 		
@@ -155,7 +156,9 @@ module Bahn
 			result = JSON.parse(result)["suggestions"]
 
 			if options[:coords].nil?
-				s = Station.new(result.first)
+        stations = result.map{|r| Station.new(r) rescue StandardError }
+        s = options[:searched_name].to_s.length > 0 ? stations.select{|s| s.name == options[:searched_name]}.first : nil
+        s = stations.first if s.nil?        
 				s.station_type = options[:current_station_type]
 			else
 				result.map! {|r| Station.new(r)}
