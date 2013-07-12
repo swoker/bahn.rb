@@ -106,8 +106,7 @@ module Bahn
 		private
 		
     def station_to_name change
-      # remove +0-xx delays
-      change.search("span").text.strip.gsub(/^\+\d+/, "").gsub(/\+\d+$/, "")
+      change.search("span").select{|s| s.attributes["class"].value != "red"}.inject(" "){|r, s| r << s.text}.strip.gsub(/\+\d+/, "")
     end
     
     def get_lines change
@@ -115,6 +114,7 @@ module Bahn
     end
     
     def parse_date to_parse
+      to_parse = to_parse.split("+").first # clears time errors e.g.: "an 18:01 +4 Gl. 17"
       to_parse = to_parse.gsub(".#{DateTime.now.year.to_s[2..4]} ", ".#{DateTime.now.year.to_s} ")
       to_parse = DateTime.parse(to_parse).to_s
       time_zone = DateTime.now.in_time_zone("Berlin").strftime("%z")
