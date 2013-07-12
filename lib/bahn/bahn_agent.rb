@@ -42,7 +42,7 @@ module Bahn
 		#  :user_agent => Set the user agent. Default: "bahn.rb"
 		def initialize
 			@agent = Mechanize.new
-      @agent.history.max_size=0
+      @agent.set_defaults if @agent.respond_to?(:set_defaults)
 			@agent.user_agent = @@user_agent ||= "bahn.rb"
 		end
 		
@@ -129,8 +129,7 @@ module Bahn
 		def find_station_at lat, lon, options={}
 			uri = @@options[:uri_stations_near] % [(lat * 1000000), (lon * 1000000)]
 			result = @agent.get(uri)
-			link = result.links.select{|l| l.href.include?("HWAI=STATION!")}.first
-			unless link.nil?
+			stations = result.links.select{|l| l.href.include?("HWAI=STATION!")}.map do |link|
 				s = Station.new({:do_load => false})
 				s.name = link.text
 				lat_match = link.href.match(/Y=(\d{7,})/)
@@ -141,9 +140,12 @@ module Bahn
 				dist_match = link.href.match(/dist=(\d+)!/)
 				s.distance = (dist_match[1].to_i / 1000) unless dist_match.nil? # meter to km
 				s.station_type = :station
-				return s
+        s
 			end
-			nil
+      
+      # prefer HBF or Hauptbahnhof if there is one nearby
+      station = stations.select{|s| s.name.include?("Hauptbahnhof") || s.name.include?("HBF")}.first
+      return (station.nil? ? stations.first : station)
 		end
 		
 		############################################################################################
@@ -155,25 +157,24 @@ module Bahn
 			result = encode result
 			result = JSON.parse(result)["suggestions"]
 
-			if options[:coords].nil?
-        stations = result.map{|r| Station.new(r) rescue StandardError }
-        s = options[:searched_name].to_s.length > 0 ? stations.select{|s| s.name == options[:searched_name]}.first : nil
-        s = stations.first if s.nil?        
-				s.station_type = options[:current_station_type]
-			else
-				result.map! {|r| Station.new(r)}
-				result.each {|s| s.distance = Geocoder::Calculations.distance_between(options[:coords], s, :units => :km)}
-				result.sort! {|a,b| a.distance <=> b.distance}
-				s = result.first
-				s.station_type = options[:current_station_type]
+      stations = result.map{|r| (Station.new(r) rescue StandardError) }.compact
+      station = options[:searched_name].to_s.length > 0 ? stations.select{|s| s.name == options[:searched_name]}.first : nil
+			if options[:coords].nil?        
+        station = stations.first if station.nil?
+				station.station_type = options[:current_station_type]
+			elsif station.nil? # 100% match not found, so look for the next best match
+				stations.each {|s| s.distance = Geocoder::Calculations.distance_between(options[:coords], s, :units => :km)}
+				stations.sort! {|a,b| a.distance <=> b.distance}
+				station = stations.first
+				station.station_type = options[:current_station_type]
 				
 				# more than 1 km? This seems to be wrong...
-				if s.distance > 1
+				if station.distance > 1
 					nearest_station = find_station_at options[:coords][0], options[:coords][1]
-					s = nearest_station if nearest_station
+					station = nearest_station if nearest_station
 				end
 			end
-			s
+			station
 		end
 		
 		def encode str
@@ -199,6 +200,13 @@ module Bahn
 			return :address if geocoder_result.types.include?("street_address") # full address
 			return :address if geocoder_result.types.include?("route") # street name only
 			return :address if geocoder_result.types.include?("postal_code") # plz only
+      
+      # city without transit station => use address + HBF
+      if geocoder_result.types.include?("locality") && geocoder_result.transit_station.to_s.length == 0
+        geocoder_result.transit_station = geocoder_result.address.gsub(", Deutschland", "").gsub(", Germany", "")
+        geocoder_result.transit_station << " HBF"
+        return :station
+      end
 			
 			# (sub-)locality or political or anything else => treat as station (most likely main station)
 			return :station
