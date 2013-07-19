@@ -158,6 +158,7 @@ module Bahn
 			result = JSON.parse(result)["suggestions"]
 
       stations = result.map{|r| (Station.new(r) rescue StandardError) }.compact
+      stations = stations.delete_if{|s| s.instance_of?(StandardError)}
       station = options[:searched_name].to_s.length > 0 ? stations.select{|s| s.name == options[:searched_name]}.first : nil
 			if options[:coords].nil?        
         station = stations.first if station.nil?
