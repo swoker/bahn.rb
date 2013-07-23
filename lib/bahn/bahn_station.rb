@@ -20,7 +20,8 @@ module Bahn
 		end
 		
 		def to_s
-			"#{self.name} (#{self.lat},#{self.lon})"
+                  return "#{self.name}" if (self.lat.nil? || self.lon.nil?)
+                  return "#{self.name} (#{self.lat},#{self.lon})"
 		end
 		
 		def to_coordinates
