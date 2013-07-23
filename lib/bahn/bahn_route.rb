@@ -141,8 +141,20 @@ module Bahn
     end
 
     def parse_price(to_parse)
-      return nil unless to_parse.first.match("EUR")
-      return to_parse.first.split("EUR").first.gsub(",",".").to_f
+      return Array.new unless to_parse.first.match("EUR")
+      tags = to_parse.uniq.map { |p| p.split(/\d+\,\d{1,2}.EUR/) }.flatten
+      tags.map! { |t| t.gsub(/\p{Space}/, " ").strip } # remove ugly whitespaces
+      prices = to_parse.uniq.map { |p| p.scan(/\d+\,\d{1,2}.EUR/) }.flatten.map { |p| p.gsub(",",".").to_f }
+      price_information = Array.new
+      (0...prices.size).each do |idx|
+        price_information << {
+          :price => prices[idx],
+          :class => tags[idx+1].scan(/\d\.\sKlasse/).first.scan(/\d/).first,
+          :details => tags[idx+1].split(/\d\.\sKlasse/).last
+        }
+      end
+
+      return price_information
     end
 
     def parse_platform(to_parse)
