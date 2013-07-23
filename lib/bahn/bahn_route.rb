@@ -123,6 +123,10 @@ module Bahn
     def target
       @parts.last.target
     end
+
+    def has_delay?
+      @parts.any? { |part| (part.start_delay > 0 || part.target_delay > 0) }
+    end
     
     private
     
