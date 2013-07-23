@@ -4,8 +4,8 @@ module Bahn
 	# Route Parts show a small step of the route from A to B with one specific type of transportation
 	# Example: "Am 2013-02-01 von 17:33 bis 17:47 : Heerdter Sandberg U, Düsseldorf nach Düsseldorf Hauptbahnhof via U 7"
 	class RoutePart
-		attr_accessor :start, :target, :type, :price, :start_time, :end_time, :start_delay, :target_delay
-          
+		attr_accessor :start, :target, :type, :platform, :price, :start_time, :end_time, :start_delay, :target_delay
+           
                 def initialize
                   @start_delay = 0
                   @target_delay = 0
