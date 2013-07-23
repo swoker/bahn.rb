@@ -126,8 +126,9 @@ module Bahn
     def get_lines change
       change.text.split("\n").reject{|s| s.to_s.length == 0}
     end
-    
+
     def parse_date to_parse
+puts to_parse
       to_parse = to_parse.split("+") # clears time errors e.g.: "an 18:01 +4 Gl. 17"
 
       if to_parse.size > 1 # extract delay information
@@ -142,7 +143,7 @@ module Bahn
       # fix missing year information in route parts (interesting for
       # past or future connections)
       unless to_parse.match(/\d{1,2}\.\d{1,2}\.\d{4}/)
-        tmp_date = DateTime.parse(to_parse)
+        tmp_date = DateTime.parse(to_parse[/\d{1,2}:\d{1,2}/])
 
         tmp_date = DateTime.new(self.start_time.year, 
                                 self.start_time.month, 
