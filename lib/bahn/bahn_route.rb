@@ -18,13 +18,15 @@ module Bahn
       @do_load = options[:include_coords]
       self.start_type = options[:start_type]
       self.target_type = options[:target_type]
+      self.notes = Array.new
       summary_time = page.search("//div[contains(@class, 'querysummary2')]").text.strip
       
       # we'll add it for now...
       #includes = ["Einfache Fahrt", "Preisinformationen", "Weitere Informationen", "Start/Ziel mit äquivalentem Bahnhof ersetzt"]
       #start_withs = ["Reiseprofil", "Hinweis", "Aktuelle Informationen"]
-      notes = page.search("//div[contains(@class, 'haupt rline')]").map(&:text).map(&:strip)      
-      
+      self.notes << page.search("//div[contains(@class, 'haupt rline')]").map(&:text).map(&:strip)      
+      self.notes << page.search("//div[contains(@class, 'red bold haupt')]").map(&:text).map(&:strip)      
+
       change = page.search("//div[contains(@class, 'routeStart')]")
       name = station_to_name change
       type = page.search("//div[contains(@class, 'routeStart')]/following::*[1]").text.strip.split.first
