@@ -6,7 +6,7 @@ module Bahn
   # At the end you'll have a nice step by step navigation
   # Feel free to refactor ;)
   class Route
-    attr_accessor :price, :parts, :notes, :start_type, :target_type
+    attr_accessor :price, :parts, :notes, :start_type, :target_type, :price
     
     # Initialize with a Mechanize::Page and a specific type 
     # The page should be the detail view of m.bahn.de
@@ -27,6 +27,8 @@ module Bahn
       notes = Array.new
       notes << page.search("//div[contains(@class, 'haupt rline')]").map(&:text).map(&:strip)
       notes << page.search("//div[contains(@class, 'red bold haupt')]").map(&:text).map(&:strip)
+      self.price = parse_price(page.search("//div[contains(@class, 'formular')]").map(&:text).map(&:strip))
+
       notes.each do |note|
         self.notes << note if note.size > 0
       end
@@ -136,6 +138,11 @@ module Bahn
     
     def get_lines change
       change.text.split("\n").reject{|s| s.to_s.length == 0}
+    end
+
+    def parse_price(to_parse)
+      return nil unless to_parse.first.match("EUR")
+      return to_parse.first.split("EUR").first.gsub(",",".").to_f
     end
 
     def parse_platform(to_parse)
