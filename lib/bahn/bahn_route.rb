@@ -38,8 +38,9 @@ module Bahn
 
       part = RoutePart.new
       part.type = type
-      part.start_time, part.start_delay = parse_date(summary_time.split("\n")[0...2].join(" "))
+      part.start_time = parse_date(summary_time.split("\n")[0...2].join(" "))
       part.start_time -= last_lines.last.to_i.minutes if options[:start_type] == :address
+      part.start_delay = parse_delay(summary_time.split("\n")[0...2].join(" "))
       part.start = Station.new({"value" => name, :load => options[:start_type] == :address ? :foot : :station, :do_load => @do_load})
       
       @parts = [part]
@@ -55,14 +56,16 @@ module Bahn
         
         lines = get_lines(change)
         if lines.last.start_with?("ab")
-          part.start_time, part.start_delay = parse_date(lines.last)
+          part.start_time = parse_date(lines.last)
+          part.start_delay = parse_delay(lines.last)
           unless lines.first.starts_with?("an")
             @parts.last.end_time = @parts.last.start_time + last_lines.last.to_i.minutes
           end
         end
         
         if lines.first.starts_with?("an")
-          @parts.last.end_time, @parts.last.target_delay = parse_date(lines.first)
+          @parts.last.end_time = parse_date(lines.first)
+          @parts.last.target_delay = parse_delay(lines.first)
           unless lines.last.start_with?("ab")
             # Fußweg for part
             part.start_time = @parts.last.end_time
@@ -83,7 +86,8 @@ module Bahn
 
       if lines.first.starts_with?("an")
         #@parts.last.end_time = parse_date(lines.first)
-        @parts.last.end_time, @parts.last.target_delay = parse_date(lines.first)
+        @parts.last.end_time = parse_date(lines.first)
+        @parts.last.target_delay = parse_delay(lines.first)
       else
         @parts.last.end_time = @parts.last.start_time + last_lines.last.to_i.minutes
       end
@@ -127,8 +131,7 @@ module Bahn
       change.text.split("\n").reject{|s| s.to_s.length == 0}
     end
 
-    def parse_date to_parse
-puts to_parse
+    def parse_delay(to_parse)
       to_parse = to_parse.split("+") # clears time errors e.g.: "an 18:01 +4 Gl. 17"
 
       if to_parse.size > 1 # extract delay information
@@ -136,6 +139,11 @@ puts to_parse
       else
         delay_information = 0
       end
+      return delay_information
+    end
+
+    def parse_date to_parse
+      to_parse = to_parse.split("+") # clears time errors e.g.: "an 18:01 +4 Gl. 17"
 
       # fix number of year digits from 2 to 4
       to_parse = to_parse.first.gsub(".#{DateTime.now.year.to_s[2..4]} ", ".#{DateTime.now.year.to_s} ")
@@ -161,7 +169,7 @@ puts to_parse
       # fix timezone
       time_zone = DateTime.now.in_time_zone("Berlin").strftime("%z")
       to_parse = to_parse.gsub("+00:00", time_zone).gsub("+0000", time_zone)
-      return [DateTime.parse(to_parse), delay_information]
+      return DateTime.parse(to_parse)
     end
   end
 end
