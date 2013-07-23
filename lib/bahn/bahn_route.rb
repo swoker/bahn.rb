@@ -42,7 +42,8 @@ module Bahn
       part.start_time -= last_lines.last.to_i.minutes if options[:start_type] == :address
       part.start_delay = parse_delay(summary_time.split("\n")[0...2].join(" "))
       part.start = Station.new({"value" => name, :load => options[:start_type] == :address ? :foot : :station, :do_load => @do_load})
-      
+      part.platform_start = parse_platform(last_lines.last)
+
       @parts = [part]
       
       page.search("//div[contains(@class, 'routeChange')]").each_with_index do |change, idx|
@@ -58,6 +59,7 @@ module Bahn
         if lines.last.start_with?("ab")
           part.start_time = parse_date(lines.last)
           part.start_delay = parse_delay(lines.last)
+          part.platform_start = parse_platform(lines.last)
           unless lines.first.starts_with?("an")
             @parts.last.end_time = @parts.last.start_time + last_lines.last.to_i.minutes
           end
@@ -66,6 +68,7 @@ module Bahn
         if lines.first.starts_with?("an")
           @parts.last.end_time = parse_date(lines.first)
           @parts.last.target_delay = parse_delay(lines.first)
+          @parts.last.platform_target = parse_platform(lines.first)
           unless lines.last.start_with?("ab")
             # Fußweg for part
             part.start_time = @parts.last.end_time
@@ -85,9 +88,9 @@ module Bahn
       lines = get_lines(change)
 
       if lines.first.starts_with?("an")
-        #@parts.last.end_time = parse_date(lines.first)
         @parts.last.end_time = parse_date(lines.first)
         @parts.last.target_delay = parse_delay(lines.first)
+        @parts.last.platform_target = parse_platform(lines.first)
       else
         @parts.last.end_time = @parts.last.start_time + last_lines.last.to_i.minutes
       end
@@ -131,8 +134,13 @@ module Bahn
       change.text.split("\n").reject{|s| s.to_s.length == 0}
     end
 
+    def parse_platform(to_parse)
+      return to_parse.split("Gl.").last.strip if to_parse.match("Gl.")
+      return nil
+    end
+
     def parse_delay(to_parse)
-      to_parse = to_parse.split("+") # clears time errors e.g.: "an 18:01 +4 Gl. 17"
+      to_parse = to_parse.split("+") # + sign indicates delay information
 
       if to_parse.size > 1 # extract delay information
         delay_information = to_parse.last.split.first.to_i
