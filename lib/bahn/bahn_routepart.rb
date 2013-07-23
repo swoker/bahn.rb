@@ -14,9 +14,15 @@ module Bahn
 		# Return a nicely formatted route
 		# Raises errors if not everything is set properly
 		def to_s
-			"Am #{start_time.to_date} von #{start_time.to_formatted_s :time} bis #{end_time.to_date.to_s + ' ' if end_time.to_date != start_time.to_date}#{end_time.to_formatted_s :time} : #{start} nach #{target} via #{type}"
+                  "Am %s von %s%s bis %s%s: %s (Gl. %s) nach %s (Gl. %s) via %s" % 
+                    [ start_time.to_date,
+                      start_time.to_formatted_s(:time),
+                      (start_delay > 0 ? " (+%i)" % start_delay : ""),
+                      (end_time.to_date != start_time.to_date ? end_time.to_date.to_s + ' ' : "") + end_time.to_formatted_s(:time),
+                      target_delay > 0 ? " (+%i)" % target_delay : "",
+                      start.name, platform_start, target.name, platform_target, type]
 		end
-		
+
 		# Set the type, e.g. Fußweg
 		def type= val
 			@type = val.squeeze(" ")
