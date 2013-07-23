@@ -41,5 +41,15 @@ module Bahn
 			# nothing else works
 			self.type
 		end
+
+                def ==(rp)
+                  self.start == rp.start &&
+                    self.target == rp.target &&
+                    self.type == rp.type &&
+                    self.platform_start == rp.platform_start &&
+                    self.platform_target == rp.platform_target && 
+                    self.start_time == rp.start_time &&
+                    self.end_time == rp.end_time
+                end
 	end
 end
