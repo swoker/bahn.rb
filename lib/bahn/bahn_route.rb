@@ -129,17 +129,38 @@ module Bahn
     
     def parse_date to_parse
       to_parse = to_parse.split("+") # clears time errors e.g.: "an 18:01 +4 Gl. 17"
-      if to_parse.size > 1
+
+      if to_parse.size > 1 # extract delay information
         delay_information = to_parse.last.split.first.to_i
       else
         delay_information = 0
       end
+
+      # fix number of year digits from 2 to 4
       to_parse = to_parse.first.gsub(".#{DateTime.now.year.to_s[2..4]} ", ".#{DateTime.now.year.to_s} ")
+
+      # fix missing year information in route parts (interesting for
+      # past or future connections)
+      unless to_parse.match(/\d{1,2}\.\d{1,2}\.\d{4}/)
+        tmp_date = DateTime.parse(to_parse)
+
+        tmp_date = DateTime.new(self.start_time.year, 
+                                self.start_time.month, 
+                                self.start_time.day,
+                                tmp_date.hour, 
+                                tmp_date.min, 
+                                tmp_date.sec)
+
+        tmp_date = tmp_date +1 if tmp_date < self.start_time
+        to_parse = tmp_date.to_s
+      end
+
       to_parse = DateTime.parse(to_parse).to_s
+
+      # fix timezone
       time_zone = DateTime.now.in_time_zone("Berlin").strftime("%z")
       to_parse = to_parse.gsub("+00:00", time_zone).gsub("+0000", time_zone)
-      result = [DateTime.parse(to_parse), delay_information]
-      return result
+      return [DateTime.parse(to_parse), delay_information]
     end
   end
 end
