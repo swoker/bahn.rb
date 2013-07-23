@@ -77,7 +77,7 @@ module Bahn
       result = submit_form page.forms.first, from, to, options		
       
       routes = []
-      links = result.links_with(:href => /details=opened!/)
+      links = result.links_with(:href => /details=opened!/).select { |l| l.to_s.size > 0} # only select connection links, no warning links
       links.each do |link|
         page = link.click
         routes << Route.new(page, options)
