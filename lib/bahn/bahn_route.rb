@@ -24,8 +24,12 @@ module Bahn
       # we'll add it for now...
       #includes = ["Einfache Fahrt", "Preisinformationen", "Weitere Informationen", "Start/Ziel mit äquivalentem Bahnhof ersetzt"]
       #start_withs = ["Reiseprofil", "Hinweis", "Aktuelle Informationen"]
-      self.notes << page.search("//div[contains(@class, 'haupt rline')]").map(&:text).map(&:strip)      
-      self.notes << page.search("//div[contains(@class, 'red bold haupt')]").map(&:text).map(&:strip)      
+      notes = Array.new
+      notes << page.search("//div[contains(@class, 'haupt rline')]").map(&:text).map(&:strip)
+      notes << page.search("//div[contains(@class, 'red bold haupt')]").map(&:text).map(&:strip)
+      notes.each do |note|
+        self.notes << note if note.size > 0
+      end
 
       change = page.search("//div[contains(@class, 'routeStart')]")
       name = station_to_name change
