@@ -25,17 +25,18 @@ module Bahn
       #includes = ["Einfache Fahrt", "Preisinformationen", "Weitere Informationen", "Start/Ziel mit äquivalentem Bahnhof ersetzt"]
       #start_withs = ["Reiseprofil", "Hinweis", "Aktuelle Informationen"]
       notes = Array.new
-      notes << page.search("//div[contains(@class, 'haupt rline')]").map(&:text).map(&:strip)
+      #notes << page.search("//div[contains(@class, 'haupt rline')]").map(&:text).map(&:strip)
       notes << page.search("//div[contains(@class, 'red bold haupt')]").map(&:text).map(&:strip)
-      self.price = parse_price(page.search("//div[contains(@class, 'formular')]").map(&:text).map(&:strip))
-
       notes.each do |note|
         self.notes << note if note.size > 0
       end
 
+      self.price = parse_price(page.search("//div[contains(@class, 'formular')]").map(&:text).map(&:strip))
+
       change = page.search("//div[contains(@class, 'routeStart')]")
       name = station_to_name change
-      type = page.search("//div[contains(@class, 'routeStart')]/following::*[1]").text.strip.split.first
+
+      type = page.search("//div[contains(@class, 'routeStart')]/following::*[1]").text.strip
       last_lines = get_lines(change)
 
       part = RoutePart.new
@@ -51,7 +52,7 @@ module Bahn
       page.search("//div[contains(@class, 'routeChange')]").each_with_index do |change, idx|
         part = RoutePart.new
         name = station_to_name change
-        type = page.search("//div[contains(@class, 'routeChange')][#{idx+1}]/following::*[1]").text.strip.split.first
+        type = page.search("//div[contains(@class, 'routeChange')][#{idx+1}]/following::*[1]").text.strip
         lines = change.text.split("\n")
         
         part.type = type
@@ -96,6 +97,7 @@ module Bahn
       else
         @parts.last.end_time = @parts.last.start_time + last_lines.last.to_i.minutes
       end
+
       
     end
     
