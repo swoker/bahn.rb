@@ -6,7 +6,7 @@ module Bahn
   # At the end you'll have a nice step by step navigation
   # Feel free to refactor ;)
   class Route
-    attr_accessor :price, :parts, :notes, :start_type, :target_type, :price
+    attr_accessor :parts, :notes, :start_type, :target_type, :price
     
     # Initialize with a Mechanize::Page and a specific type 
     # The page should be the detail view of m.bahn.de
@@ -145,7 +145,7 @@ module Bahn
     def parse_price(to_parse)
       return Array.new unless to_parse.first.match("EUR")
       tags = to_parse.uniq.map { |p| p.split(/\d+\,\d{1,2}.EUR/) }.flatten
-      tags.map! { |t| t.gsub(/\p{Space}/, " ").strip } # remove ugly whitespaces
+      tags.map! { |t| t.gsub(/\p{Space}/, " ").strip } # remove ugly whitespaces: ruby >= 1.9.3
       prices = to_parse.uniq.map { |p| p.scan(/\d+\,\d{1,2}.EUR/) }.flatten.map { |p| p.gsub(",",".").to_f }
       price_information = Array.new
       (0...prices.size).each do |idx|
