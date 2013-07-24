@@ -69,8 +69,15 @@ module Bahn
     #   "no_route" if no route could be found
     def get_routes from, to, options = {}
       options[:start_type] = check_point_type(from) || options[:start_type]
-      options[:target_type] =	check_point_type(to) || options[:target_type]
-      options = {:time => Time.now, :depth => 0, :include_coords => true, :limit => 2}.merge(options)
+      options[:target_type] = check_point_type(to) || options[:target_type]
+      # default options
+      options = {
+        :time => Time.now, 
+        :depth => 0, 
+        :include_coords => true, 
+        :limit => 2,
+        :time_relation => :depature }.merge(options)
+      
       options[:time] = options[:time].in_time_zone("Berlin") #+ 10.minutes # Ansonsten liegt die erste Verbindung in der Vergangenheit
       page = @agent.get @@options[:url_route]
       
