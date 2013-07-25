@@ -36,11 +36,13 @@ module Bahn
       change = page.search("//div[contains(@class, 'routeStart')]")
       name = station_to_name change
 
-      type = page.search("//div[contains(@class, 'routeStart')]/following::*[1]").text.split
+      type = page.search("//div[contains(@class, 'routeStart')]/following::*[1]").children
+      type = type.map { |m| m.text.gsub("\n", " ").strip.split.join(" ") } - [""] # remove linebreaks double space etc.
+      
       last_lines = get_lines(change)
 
       part = RoutePart.new
-      part.type = type[0..1].join(" ")
+      part.type = type.first
       part.start_time = parse_date(summary_time.split("\n")[0...2].join(" "))
       part.start_time -= last_lines.last.to_i.minutes if options[:start_type] == :address
       part.start_delay = parse_delay(summary_time.split("\n")[0...2].join(" "))
@@ -52,10 +54,11 @@ module Bahn
       page.search("//div[contains(@class, 'routeChange')]").each_with_index do |change, idx|
         part = RoutePart.new
         name = station_to_name change
-        type = page.search("//div[contains(@class, 'routeChange')][#{idx+1}]/following::*[1]").text.split
         lines = change.text.split("\n")
-        
-        part.type = type[0..1].join(" ")
+
+        type = page.search("//div[contains(@class, 'routeChange')][#{idx+1}]/following::*[1]").children
+        type = type.map { |m| m.text.gsub("\n", " ").strip.split.join(" ") } - [""] # remove linebreaks double space etc.
+        part.type = type.first
         part.start = Station.new({"value" => name, :load => :station, :do_load => @do_load})
         
         lines = get_lines(change)
