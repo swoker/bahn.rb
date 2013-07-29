@@ -85,6 +85,7 @@ module Bahn
       
       routes = []
       links = result.links_with(:href => /details=opened!/).select { |l| l.to_s.size > 0} # only select connection links, no warning links
+      links.reverse! if options[:time_relation] == :arrival # respect :time_relation for route processing
       links.each do |link|
         page = link.click
         routes << Route.new(page, options)
