@@ -23,7 +23,7 @@ module Bahn
       
       # we'll add it for now...
       #includes = ["Einfache Fahrt", "Preisinformationen", "Weitere Informationen", "Start/Ziel mit äquivalentem Bahnhof ersetzt"]
-      #start_withs = ["Reiseprofil", "Hinweis", "Aktuelle Informationen"]
+      #starts_with = ["Reiseprofil", "Hinweis", "Aktuelle Informationen"]
       notes = Array.new
       #notes << page.search("//div[contains(@class, 'haupt rline')]").map(&:text).map(&:strip)
       notes << page.search("//div[contains(@class, 'red bold haupt')]").map(&:text).map(&:strip)
@@ -32,17 +32,12 @@ module Bahn
       end
 
       self.price = parse_price(page.search("//div[contains(@class, 'formular')]").map(&:text).map(&:strip))
-
       change = page.search("//div[contains(@class, 'routeStart')]")
       name = station_to_name change
-
-      type = page.search("//div[contains(@class, 'routeStart')]/following::*[1]").children
-      type = type.map { |m| m.text.gsub("\n", " ").strip.split.join(" ") } - [""] # remove linebreaks double space etc.
-      
       last_lines = get_lines(change)
 
       part = RoutePart.new
-      part.type = type.first
+      part.type = parse_transport_medium(page.search("//div[contains(@class, 'routeStart')]/following::*[1]"))
       part.start_time = parse_date(summary_time.split("\n")[0...2].join(" "))
       part.start_time -= last_lines.last.to_i.minutes if options[:start_type] == :address
       part.start_delay = parse_delay(summary_time.split("\n")[0...2].join(" "))
@@ -56,9 +51,7 @@ module Bahn
         name = station_to_name change
         lines = change.text.split("\n")
 
-        type = page.search("//div[contains(@class, 'routeChange')][#{idx+1}]/following::*[1]").children
-        type = type.map { |m| m.text.gsub("\n", " ").strip.split.join(" ") } - [""] # remove linebreaks double space etc.
-        part.type = type.first
+        part.type = parse_transport_medium(page.search("//div[contains(@class, 'routeChange')][#{idx+1}]/following::*[1]"))
         part.start = Station.new({"value" => name, :load => :station, :do_load => @do_load})
         
         lines = get_lines(change)
@@ -160,6 +153,19 @@ module Bahn
       end
 
       return price_information
+    end
+
+    def parse_transport_medium(to_parse)
+      # check if any of the underlying html classes is of type "red bold",
+      # which indicates a warning message regarding the transport medium
+      add_notes = to_parse.children.map { |m| m["class"] }.compact.any? { |c| c.match(/red bold/) }
+
+      # clean up: remove linebreaks double space etc.
+      plain_text_array = to_parse.children.map { |m| m.text.gsub("\n", " ").strip.split.join(" ") } - [""] 
+      type = plain_text_array.first # transport medium
+
+      self.notes << "%s: %s" % [type, plain_text_array[1..-1].join(". ") ] if add_notes
+      return type
     end
 
     def parse_platform(to_parse)
