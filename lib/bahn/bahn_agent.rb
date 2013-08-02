@@ -146,19 +146,14 @@ module Bahn
               end
 
               sub_route = sub_routes.select { |r| r.parts == route.parts[start_idx..end_idx] }.first
-
-              if sub_route.nil?
-                part.price = []
-              else
-                part.price = sub_route.price
-              end
+              part.price = sub_route.price unless sub_route.nil?
             end
           else # if route consists of only one part we can simply copy
                # the price information
             route.parts.first.price = route.price
           end
         end  
-          
+        
       end
         
       return routes
