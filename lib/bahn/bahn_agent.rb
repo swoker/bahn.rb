@@ -76,8 +76,9 @@ module Bahn
         :depth => 0, 
         :include_coords => true, 
         :limit => 2,
-        :time_relation => :depature }.merge(options)
-      
+        :time_relation => :depature,
+        :identify_part_prices => :none }.merge(options)
+
       options[:time] = options[:time].in_time_zone("Berlin") #+ 10.minutes # Ansonsten liegt die erste Verbindung in der Vergangenheit
       page = @agent.get @@options[:url_route]
       
@@ -118,7 +119,49 @@ module Bahn
       end
       
       raise "no_route" if routes.count == 0 || links.count == 0			
-      routes
+
+      # attach price information for each routepart if necessary
+      unless options[:identify_part_prices] == :none
+        routes.each do |route|
+          if route.parts.size > 1
+            route.parts.each do |part|
+              sub_options = options.merge(
+                                          :limit => 4, 
+                                          :include_coords => false, 
+                                          :time_relation => :depature, 
+                                          :time => part.start_time, 
+                                          :start_type => :station, 
+                                          :target_type => :station,
+                                          :depth => 0,
+                                          :identify_part_prices =>:none )
+
+              start_idx = route.parts.index(part)              
+              
+              if options[:identify_part_prices] == :part
+                sub_routes = self.get_routes(part.start, part.target, sub_options)
+                end_idx = start_idx
+              elsif options[:identify_part_prices] == :to_target
+                sub_routes = self.get_routes(part.start, route.parts.last.target, sub_options)
+                end_idx = -1
+              end
+
+              sub_route = sub_routes.select { |r| r.parts == route.parts[start_idx..end_idx] }.first
+
+              if sub_route.nil?
+                part.price = []
+              else
+                part.price = sub_route.price
+              end
+            end
+          else # if route consists of only one part we can simply copy
+               # the price information
+            route.parts.first.price = route.price
+          end
+        end  
+          
+      end
+        
+      return routes
     end
     
     # Find the first best station by name
