@@ -83,7 +83,6 @@ module Bahn
       page = @agent.get @@options[:url_route]
       
       result = submit_form page.forms.first, from, to, options		
-      
       routes = []
       links = result.links_with(:href => /details=opened!/).select { |l| l.to_s.size > 0} # only select connection links, no warning links
       links.reverse! if options[:time_relation] == :arrival # respect :time_relation for route processing
@@ -92,10 +91,22 @@ module Bahn
       links.each_index do |idx|
         link_threads[idx] = Thread.new {
           page = links[idx].click
+          # maybe we are too fast in requesting :-)
+          if page.title.match(/Fehler/)
+            (1..5).each do |idx|
+              # puts "Fehler %i" % idx
+              sleep(1)
+              page = links[idx].click 
+              break unless page.title.match(/Fehler/)
+            end
+          end
+
+#puts page.title.inspect
           Thread.current[:route] = Route.new(page, options)
         }
         break if idx == options[:limit]
       end
+      link_threads.each { |t| t.abort_on_exception = true}
       routes = link_threads.map { |t| t.join; t[:route] }
 
       # Keine Station gefunden also suchen wir nach der nächstbesten Adresse/Station
@@ -154,13 +165,14 @@ module Bahn
                     sub_routes = self.get_routes(part.start, route.parts.last.target, sub_options)
                     end_idx = -1
                   end
-                  
+
                   sub_route = sub_routes.select { |r| r.parts == route.parts[start_idx..end_idx] }.first
                   Thread.current[:sub_route] = sub_route 
                 }
               end
               
               # update sub thread variables
+              sub_routes_threads.each { |t| t.abort_on_exception = true}
               sub_routes_threads.each_index do |idx| 
                 sub_routes_threads[idx].join
                 route.parts[idx].price =  sub_routes_threads[idx][:sub_route].price unless sub_routes_threads[idx][:sub_route].nil? 
@@ -174,6 +186,7 @@ module Bahn
           } 
         end  
         # update main thread variables
+        routes_threads.each { |t| t.abort_on_exception = true}
         routes_threads.each_index do |idx|
           routes_threads[idx].join
           routes[idx].parts = routes_threads[idx][:route_parts]
