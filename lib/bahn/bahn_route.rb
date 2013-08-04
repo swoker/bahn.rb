@@ -111,11 +111,12 @@ module Bahn
       @parts.last.end_time
     end
 
-    # Duration of a route
+    # Duration of a route in seconds
     def duration
-      end_time_plus_delay = end_time + @parts.last.target_delay
-      duration_in_s = end_time_plus_delay.to_i - start_time.to_i
-      return duration_in_s
+      start = start_time.to_i
+      end_with_delay = end_time.to_i + (@parts.last.target_delay * 1.minutes)
+
+      end_with_delay - start
     end
 
     # Starting point of the route
