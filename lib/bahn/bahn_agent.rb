@@ -224,15 +224,14 @@ module Bahn
             route.parts.each_index do |idx|
               part = route.parts[idx]
               sub_routes_threads[idx] = Thread.new {
-                sub_options = options.merge(
-                                            :limit => 4, 
+                sub_options = options.merge(:limit => 4, 
                                             :include_coords => false, 
                                             :time_relation => :depature, 
                                             :time => part.start_time, 
                                             :start_type => :station, 
                                             :target_type => :station,
                                             :depth => 0,
-                                            :identify_part_prices =>:none )
+                                            :identify_part_prices =>:none)
                 
                 start_idx = route.parts.index(part)
                 
@@ -241,7 +240,7 @@ module Bahn
                   end_idx = start_idx
                 elsif options[:identify_part_prices] == :to_target
                   sub_routes = self.get_routes(part.start, route.parts.last.target, sub_options)
-                    end_idx = -1
+                  end_idx = -1
                 end
                 
                 sub_route = sub_routes.select { |r| r.parts == route.parts[start_idx..end_idx] }.first
@@ -253,11 +252,11 @@ module Bahn
             sub_routes_threads.each { |t| t.abort_on_exception = true}
             sub_routes_threads.each_index do |idx| 
               sub_routes_threads[idx].join
-              route.parts[idx].price =  sub_routes_threads[idx][:sub_route].price unless sub_routes_threads[idx][:sub_route].nil? 
-              end
+              route.parts[idx].price = sub_routes_threads[idx][:sub_route].price unless sub_routes_threads[idx][:sub_route].nil? 
+            end
             
           else # if route consists of only one part we can simply copy
-            # the price information
+               # the price information
             route.parts.first.price = route.price
           end 
           Thread.current[:route_parts] = route.parts
