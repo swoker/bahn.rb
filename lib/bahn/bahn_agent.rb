@@ -86,26 +86,22 @@ module Bahn
       routes = []
       links = result.links_with(:href => /details=opened!/).select { |l| l.to_s.size > 0} # only select connection links, no warning links
       links.reverse! if options[:time_relation] == :arrival # respect :time_relation for route processing
-
+      
       link_threads = Array.new
       links.each_index do |idx|
         link_threads[idx] = Thread.new {
-          page = links[idx].click
           # maybe we are too fast in requesting :-)
-          if page.title.match(/Fehler/)
-            (1..5).each do |idx|
-              # puts "Fehler %i" % idx
-              sleep(1)
-              page = links[idx].click 
-              break unless page.title.match(/Fehler/)
-            end
+          (1..5).each do |i|
+            page = links[idx].click 
+            break unless page.title.match(/Fehler/)
+            # puts "link.click error: %i" % i
+            sleep(1)
           end
-
-#puts page.title.inspect
           Thread.current[:route] = Route.new(page, options)
         }
         break if idx == options[:limit]
       end
+
       link_threads.each { |t| t.abort_on_exception = true}
       routes = link_threads.map { |t| t.join; t[:route] }
 
