@@ -137,62 +137,7 @@ module Bahn
       raise "no_route" if routes.count == 0 || links.count == 0			
 
       # attach price information for each routepart if necessary
-      unless options[:identify_part_prices] == :none
-        routes_threads = Array.new
-        routes.each do |route|
-          routes_threads << Thread.new {
-            if route.parts.size > 1
-              sub_routes_threads = Array.new
-              route.parts.each_index do |idx|
-                part = route.parts[idx]
-                sub_routes_threads[idx] = Thread.new {
-                  sub_options = options.merge(
-                                              :limit => 4, 
-                                              :include_coords => false, 
-                                              :time_relation => :depature, 
-                                              :time => part.start_time, 
-                                              :start_type => :station, 
-                                              :target_type => :station,
-                                              :depth => 0,
-                                              :identify_part_prices =>:none )
-                  
-                  start_idx = route.parts.index(part)
-                  
-                  if options[:identify_part_prices] == :part
-                    sub_routes = self.get_routes(part.start, part.target, sub_options)
-                    end_idx = start_idx
-                  elsif options[:identify_part_prices] == :to_target
-                    sub_routes = self.get_routes(part.start, route.parts.last.target, sub_options)
-                    end_idx = -1
-                  end
-
-                  sub_route = sub_routes.select { |r| r.parts == route.parts[start_idx..end_idx] }.first
-                  Thread.current[:sub_route] = sub_route 
-                }
-              end
-              
-              # update sub thread variables
-              sub_routes_threads.each { |t| t.abort_on_exception = true}
-              sub_routes_threads.each_index do |idx| 
-                sub_routes_threads[idx].join
-                route.parts[idx].price =  sub_routes_threads[idx][:sub_route].price unless sub_routes_threads[idx][:sub_route].nil? 
-              end
-              
-            else # if route consists of only one part we can simply copy
-              # the price information
-              route.parts.first.price = route.price
-            end 
-            Thread.current[:route_parts] = route.parts
-          } 
-        end  
-        # update main thread variables
-        routes_threads.each { |t| t.abort_on_exception = true}
-        routes_threads.each_index do |idx|
-          routes_threads[idx].join
-          routes[idx].parts = routes_threads[idx][:route_parts]
-        end
-        
-      end
+      identify_part_prices(routes, options) unless options[:identify_part_prices] == :none
         
       return routes
     end
@@ -272,6 +217,62 @@ module Bahn
         end
       end
       station
+    end
+
+    def identify_part_prices(routes, options)
+      routes_threads = Array.new
+      routes.each do |route|
+        routes_threads << Thread.new {
+          if route.parts.size > 1
+            sub_routes_threads = Array.new
+            route.parts.each_index do |idx|
+              part = route.parts[idx]
+              sub_routes_threads[idx] = Thread.new {
+                sub_options = options.merge(
+                                            :limit => 4, 
+                                            :include_coords => false, 
+                                            :time_relation => :depature, 
+                                            :time => part.start_time, 
+                                            :start_type => :station, 
+                                            :target_type => :station,
+                                            :depth => 0,
+                                            :identify_part_prices =>:none )
+                
+                start_idx = route.parts.index(part)
+                
+                if options[:identify_part_prices] == :part
+                  sub_routes = self.get_routes(part.start, part.target, sub_options)
+                  end_idx = start_idx
+                elsif options[:identify_part_prices] == :to_target
+                  sub_routes = self.get_routes(part.start, route.parts.last.target, sub_options)
+                    end_idx = -1
+                end
+                
+                sub_route = sub_routes.select { |r| r.parts == route.parts[start_idx..end_idx] }.first
+                Thread.current[:sub_route] = sub_route 
+              }
+            end
+            
+            # update sub thread variables
+            sub_routes_threads.each { |t| t.abort_on_exception = true}
+            sub_routes_threads.each_index do |idx| 
+              sub_routes_threads[idx].join
+              route.parts[idx].price =  sub_routes_threads[idx][:sub_route].price unless sub_routes_threads[idx][:sub_route].nil? 
+              end
+            
+          else # if route consists of only one part we can simply copy
+            # the price information
+            route.parts.first.price = route.price
+          end 
+          Thread.current[:route_parts] = route.parts
+        } 
+      end  
+      # update main thread variables
+      routes_threads.each { |t| t.abort_on_exception = true}
+      routes_threads.each_index do |idx|
+        routes_threads[idx].join
+        routes[idx].parts = routes_threads[idx][:route_parts]
+      end
     end
     
     def encode str
