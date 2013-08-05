@@ -9,6 +9,7 @@ module Bahn
     def initialize
       @start_delay = 0
       @target_delay = 0
+      @price = Array.new
     end
 
     # Return a nicely formatted route
