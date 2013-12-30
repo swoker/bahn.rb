@@ -198,7 +198,7 @@ module Bahn
       to_parse = to_parse.split("+") # clears time errors e.g.: "an 18:01 +4 Gl. 17"
 
       # fix number of year digits from 2 to 4
-      to_parse = to_parse.first.gsub(".#{DateTime.now.year.to_s[2..4]} ", ".#{DateTime.now.year.to_s} ")
+      to_parse = to_parse.first.gsub(/\.#{DateTime.now.year.to_s[2..4]}/, ".#{DateTime.now.year.to_s}")
 
       # fix missing year information in route parts (interesting for
       # past or future connections)
