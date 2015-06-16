@@ -19,7 +19,10 @@ module Bahn
       self.start_type = options[:start_type]
       self.target_type = options[:target_type]
       self.notes = Array.new
-      summary_time = page.search("//div[contains(@class, 'querysummary2')]").text.strip
+
+      #summary_time = page.search("//div[contains(@class, 'querysummary2')]").text.strip
+      summary_time = page.search("//*[@class='querysummary2']").text.strip
+
       
       # parse (warning) notes regarding the route from several html
       # classes of the html document
